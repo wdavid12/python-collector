@@ -20,21 +20,12 @@ def parse_args():
 
 def main_loop(sock):
     flow_processor.draw_screen()
-    # prev_time = time.time()
-    # count=0
     while True:
         r,w,e = select.select([sock], [], [], TIMEOUT)
         if sock in r:
             data, _ = sock.recvfrom(MTU)
-            # count += 1
             flow_processor.process_data(data)
-        flow_processor.draw_screen(True)
-        time.sleep(0.01) # allow gc to run
-        # now = time.time()
-        # if now-prev_time > 5:
-            # print('got %d packets at %f rate' %(count, count/(now-prev_time)))
-            # prev_time = now
-            # count=0
+        flow_processor.draw_screen()
 
 if __name__ == "__main__":
 

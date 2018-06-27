@@ -33,14 +33,18 @@ class FlowProcessor():
 
 
     def draw_screen(self, debug=False):
+        now = time.time()
+        total_elapsed = int(now - self.start_time)
+        count_time = now - self.prev_time
+
+        if count_time < 1:
+            return
+
         print(CLEAR_STR)
 
         if debug:
             self.debug_print()
 
-        now = time.time()
-        total_elapsed = int(now - self.start_time)
-        count_time = now - self.prev_time
         self.prev_time = now
 
         print('[ %s ][ Elapsed: %-10d seconds ][ %s ]\n' % (
