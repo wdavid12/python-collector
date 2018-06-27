@@ -22,3 +22,9 @@ CLEAR_STR  = chr(27) + '[2J' + chr(27) + '[H'
 
 # For smoothed rate calculation
 ALPHA = 0.2
+
+# select() timeout
+TIMEOUT = 0.5
+
+# for recv()
+MTU = 2048

@@ -5,6 +5,7 @@ import time
 
 from threading import Lock
 
+from .parser import Parser
 from .sampling_template import *
 from .constants import *
 
@@ -23,43 +24,40 @@ class FlowCounter():
         self.count = 0
 
 
-class ReaderWithTemplate(ipfix.reader.MessageStreamReader):
-    def __init__(self, stream, template):
-        super().__init__(stream)
-        self.msg.odid = OBS_DOMAIN_ID
-        self.msg.add_template(template, export=False)
-        self.msg.accepted_tids.add((OBS_DOMAIN_ID, template.tid))
-
-
 class FlowProcessor():
     def __init__(self):
         self.flows = collections.OrderedDict()
         self.start_time = time.time()
         self.prev_time = time.time()
         self.template = build_sampling_template()
-        self.mutex = Lock()
 
 
-    def draw_screen(self):
-        with self.mutex:
-            print(CLEAR_STR)
+    def draw_screen(self, debug=False):
+        print(CLEAR_STR)
 
-            now = time.time()
-            total_elapsed = int(now - self.start_time)
-            count_time = now - self.prev_time
-            self.prev_time = now
+        if debug:
+            self.debug_print()
 
-            print('[ %s ][ Elapsed: %-10d seconds ][ %s ]\n' % (
-                'IPFIX Flows', total_elapsed, time.ctime(now)))
+        now = time.time()
+        total_elapsed = int(now - self.start_time)
+        count_time = now - self.prev_time
+        self.prev_time = now
 
-            print("%-40s %-25s %s\n" % ('Flow','Rate (packets/sec)','Total Count'))
+        print('[ %s ][ Elapsed: %-10d seconds ][ %s ]\n' % (
+            'IPFIX Flows', total_elapsed, time.ctime(now)))
 
-            for k,v in self.flows.items():
-                rate = v.count / count_time
-                # rate = (v.prev_rate * ALPHA) + (rate * (1-ALPHA))
-                # v.prev_rate = rate
-                print("%-40s %-25f %d" % (k, rate, v.total_count))
-                v.reset()
+        print("%-45s %-25s %s\n" % ('Flow','Rate (packets/sec)','Total Count'))
+
+        for k,v in self.flows.items():
+            rate = v.count / count_time
+            # rate = (v.prev_rate * ALPHA) + (rate * (1-ALPHA))
+            # v.prev_rate = rate
+            print("%-45s %-25f %d" % (k, rate, v.total_count))
+            v.reset()
+
+
+    def debug_print(self):
+        print('number of entries: %d' % len(self.flows))
 
 
     def format_record(self, rec):
@@ -85,16 +83,16 @@ class FlowProcessor():
         return ''.join(key)
 
 
-    def process_data(self, instream):
+    def process_data(self, buff):
 
-        r = ReaderWithTemplate(instream, self.template)
+        r = Parser(self.template, buff)
+        r.parse()
 
-        with self.mutex:
-            for rec in r.namedict_iterator():
-                key = self.format_record(rec)
-                if key not in self.flows:
-                    self.flows[key] = FlowCounter()
-                self.flows[key].inc()
+        for rec in r.namedict_iterator():
+            key = self.format_record(rec)
+            if key not in self.flows:
+                self.flows[key] = FlowCounter()
+            self.flows[key].inc()
 
 
 flow_processor = FlowProcessor()
